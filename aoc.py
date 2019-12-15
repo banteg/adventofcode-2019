@@ -3,12 +3,18 @@ import click
 import requests
 from pathlib import Path
 from inspect import cleandoc
+from lxml import html
+from functools import wraps
+import shelve
+
+import click
 
 from config import cookies
 
 
 ok = click.style('✔︎', fg='green')
 fail = click.style('✘', fg='red')
+db = shelve.open('answers.db')
 
 
 class Data(str):
@@ -49,6 +55,8 @@ def test(cases):
             data = load_input(day)
             result = f(data)
             click.secho(f'{result}\n')
+            if result is not None:
+                post_answer(result, day, part.split()[-1])
         else:
             click.secho('tests failed\n', fg='red')
         return f
@@ -73,3 +81,33 @@ def load_input(day):
     if not path.exists():
         download_input(day)
     return Data(path.read_text())
+
+
+def classify_answer_response(text):
+    if "That's the right answer" in text:
+        return True
+    if "That's not the right answer" in text:
+        return False
+    if "You gave an answer too recently" in text:
+        raise TimeoutError(text)
+    if "You don't seem to be solving the right level" in text:
+        return None
+
+
+def post_answer(answer, day, part, year=2019):
+    key = f'{year}.{day}.{part}.{answer}'
+    text = db[key]
+    if not text:
+        url = f'https://adventofcode.com/{year}/day/{day}/answer'
+        r = requests.post(
+            url, data={'level': part, 'answer': answer}, cookies=cookies)
+        r.raise_for_status()
+        h = html.fromstring(r.content)
+        text = h.xpath('//article')[0].text_content().rpartition(' [')[0]
+        if classify_answer_response(text) in (True, False):
+            db[key] = text
+
+    kind = classify_answer_response(text)
+    colors = {True: 'green', False: 'red', None: 'yellow'}
+    click.secho(text, fg=colors[kind], bold=True)
+    return text
