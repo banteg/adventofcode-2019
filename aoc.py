@@ -96,7 +96,7 @@ def classify_answer_response(text):
 
 def post_answer(answer, day, part, year=2019):
     key = f'{year}.{day}.{part}.{answer}'
-    text = db[key]
+    text = db.get(key)
     if not text:
         url = f'https://adventofcode.com/{year}/day/{day}/answer'
         r = requests.post(
