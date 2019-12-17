@@ -1,3 +1,5 @@
+from itertools import product
+
 import aoc
 
 examples = {
@@ -8,15 +10,9 @@ examples = {
     '1,1,1,4,99,5,6,0,99': 30,
 }
 
-@aoc.test(examples)
-def part_1(data: aoc.Data):
+
+def run_intcode(code):
     pos = 0
-    code = data.ints_lines[0]
-
-    if data not in examples:
-        # set state to 1202 program alarm
-        code[1:3] = [12, 2]
-
     while pos <= len(code) - 4:
         op, a, b, c = code[pos:pos+4]
         if op == 1:
@@ -30,6 +26,20 @@ def part_1(data: aoc.Data):
     return code[0]
 
 
+@aoc.test(examples)
+def part_1(data: aoc.Data):
+    code = data.ints_lines[0]
+    if data not in examples:
+        # set state to 1202 program alarm
+        code[1:3] = [12, 2]
+    return run_intcode(code)
+
+
 @aoc.test({})
 def part_2(data: aoc.Data):
-    return
+    for noun, verb in product(range(100), range(100)):
+        code = data.ints_lines[0]
+        code[1:3] = [noun, verb]
+        output = run_intcode(code)
+        if output == 19690720:
+            return 100 * noun + verb
